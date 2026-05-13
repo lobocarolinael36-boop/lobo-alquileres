@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lobo Alquileres — Sistema de Gestión Inmobiliaria</title>
+    <!--
+      Forzamos modo claro antes de que React monte para prevenir que extensiones
+      como Dark Reader (que agrega class="dark" al <html>) activen las CSS vars
+      de modo oscuro que tenemos preparadas en index.css para el futuro.
+      Cuando implementemos el toggle de tema, este script va a ser reemplazado
+      por la lógica que lee la preferencia del usuario desde localStorage.
+    -->
+    <script>document.documentElement.classList.remove('dark')</script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

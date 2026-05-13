@@ -1,0 +1,20 @@
+spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        # Muestra los valores reales de los parámetros en las queries (solo dev)
+        org.hibernate.orm.jdbc.bind: TRACE
+
+jwt:
+  # Secreto de 448 bits en Base64 — solo para desarrollo local.
+  # En producción, sobreescribir con la variable de entorno JWT_SECRET.
+  # Generar uno nuevo con: openssl rand -base64 64
+  secret: bG9ib0FscXVpbGVyZXNTM2NyM3RLM3lGb3JEZXZFbnZpcm9ubWVudDIwMjVTZWN1cmVFbm91Z2g=
+  expiration-ms: 86400000   # 24 horas
+
+logging:
+  level:
+    com.loboalquileres: DEBUG
+    org.hibernate.SQL: DEBUG

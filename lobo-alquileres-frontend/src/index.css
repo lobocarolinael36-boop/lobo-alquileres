@@ -1,0 +1,122 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================================
+   CSS VARIABLES — Paleta Lobo Alquileres × shadcn/ui
+   Conversiones HSL:
+     Corporate Teal #1A4F59 → hsl(193, 54%, 22%)
+     Accent Red    #A92F2F → hsl(0,   57%, 42%)
+     Carbon Gray   #333333 → hsl(0,    0%, 20%)
+   ============================================================================= */
+
+@layer base {
+  :root {
+    /* Superficie */
+    --background:           0 0% 97%;       /* off-white, no agresivo */
+    --foreground:           0 0% 20%;       /* carbon #333333 */
+
+    /* Cards y popovers */
+    --card:                 0 0% 100%;
+    --card-foreground:      0 0% 20%;
+    --popover:              0 0% 100%;
+    --popover-foreground:   0 0% 20%;
+
+    /* Primary → Corporate Teal (botones principales, sidebar, navbar) */
+    --primary:              193 54% 22%;
+    --primary-foreground:   0 0% 100%;
+
+    /* Secondary → Teal muy claro (badges, chips, fondos de sección) */
+    --secondary:            193 30% 92%;
+    --secondary-foreground: 193 54% 22%;
+
+    /* Muted → gris neutro muy suave */
+    --muted:                0 0% 94%;
+    --muted-foreground:     0 0% 45%;
+
+    /* Accent → Red (CTAs destacados, alertas de ajuste, acciones críticas) */
+    --accent:               0 57% 42%;
+    --accent-foreground:    0 0% 100%;
+
+    /* Destructive → también Accent Red */
+    --destructive:          0 57% 42%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Bordes e inputs */
+    --border:               0 0% 88%;
+    --input:                0 0% 88%;
+    --ring:                 193 54% 22%;    /* foco en teal */
+
+    /* Border radius base */
+    --radius:               0.5rem;
+
+    /* Gráficos del dashboard */
+    --chart-1:  193 54% 22%;   /* teal */
+    --chart-2:  0   57% 42%;   /* red */
+    --chart-3:  193 40% 45%;   /* teal medio */
+    --chart-4:  35  80% 55%;   /* ámbar — cuotas en proceso */
+    --chart-5:  120 40% 40%;   /* verde — cuotas pagadas */
+  }
+
+  /* Dark mode — preparado para el futuro, no activo aún */
+  .dark {
+    --background:           193 30% 8%;
+    --foreground:           0 0% 95%;
+    --card:                 193 25% 12%;
+    --card-foreground:      0 0% 95%;
+    --popover:              193 25% 12%;
+    --popover-foreground:   0 0% 95%;
+    --primary:              193 54% 55%;
+    --primary-foreground:   193 54% 8%;
+    --secondary:            193 20% 18%;
+    --secondary-foreground: 193 54% 80%;
+    --muted:                193 20% 16%;
+    --muted-foreground:     0 0% 60%;
+    --accent:               0 57% 55%;
+    --accent-foreground:    0 0% 100%;
+    --destructive:          0 57% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border:               193 20% 20%;
+    --input:                193 20% 20%;
+    --ring:                 193 54% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Valores monetarios siempre en monospace para alinear decimales en tablas */
+  .money, [data-money] {
+    @apply font-mono tabular-nums;
+  }
+}
+
+/* =============================================================================
+   UTILIDADES GLOBALES
+   ============================================================================= */
+
+@layer utilities {
+  /* Sidebar corporativa */
+  .sidebar-corporate {
+    @apply bg-corporate text-corporate-foreground;
+  }
+
+  /* Badge de estado de cuota */
+  .badge-pagada    { @apply bg-green-100  text-green-800  border-green-200; }
+  .badge-pendiente { @apply bg-yellow-100 text-yellow-800 border-yellow-200; }
+  .badge-vencida   { @apply bg-red-100   text-red-800    border-red-200; }
+  .badge-parcial   { @apply bg-orange-100 text-orange-800 border-orange-200; }
+
+  /* Alerta de ajuste de inflación (elemento crítico del negocio) */
+  .alert-ajuste {
+    @apply bg-accent/10 border border-accent/30 text-accent rounded-lg p-4;
+  }
+}

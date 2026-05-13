@@ -1,0 +1,74 @@
+#!/bin/sh
+# ----------------------------------------------------------------------------
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+# Apache Maven Wrapper startup batch script, version 3.3.2
+# ----------------------------------------------------------------------------
+
+set -e
+
+# OS specific support.
+cygwin=false;
+darwin=false;
+mingw=false
+case "$(uname)" in
+  CYGWIN*) cygwin=true ;;
+  DARWIN*) darwin=true ;;
+  MINGW*) mingw=true ;;
+esac
+
+[ -z "$JAVA_HOME" ] || JAVACMD="$JAVA_HOME/bin/java"
+[ -z "$JAVACMD" ] && JAVACMD=java
+
+if [ -z "$JAVA_HOME" ] && ! command -v java > /dev/null 2>&1; then
+  echo "Error: JAVA_HOME is not set and no 'java' command could be found in your PATH." >&2
+  echo "Please set the JAVA_HOME variable in your environment to match the location of your Java installation." >&2
+  exit 1
+fi
+
+MAVEN_WRAPPER_PROPERTIES_PATH=".mvn/wrapper/maven-wrapper.properties"
+
+if [ -f "$MAVEN_WRAPPER_PROPERTIES_PATH" ]; then
+  # shellcheck disable=SC2034
+  DISTRIBUTION_URL=$(grep "distributionUrl" "$MAVEN_WRAPPER_PROPERTIES_PATH" | sed 's/.*=//;s/\r//')
+fi
+
+MAVEN_WRAPPER_JAR=".mvn/wrapper/maven-wrapper.jar"
+MAVEN_WRAPPER_DOWNLOAD_URL=$(grep "wrapperUrl" "$MAVEN_WRAPPER_PROPERTIES_PATH" 2>/dev/null | sed 's/.*=//;s/\r//')
+
+# If wrapper jar doesn't exist, download it
+if [ ! -f "$MAVEN_WRAPPER_JAR" ]; then
+  echo "Downloading Maven Wrapper..."
+  if command -v curl > /dev/null 2>&1; then
+    curl -o "$MAVEN_WRAPPER_JAR" "$MAVEN_WRAPPER_DOWNLOAD_URL" -f -L --retry 3
+  elif command -v wget > /dev/null 2>&1; then
+    wget -O "$MAVEN_WRAPPER_JAR" "$MAVEN_WRAPPER_DOWNLOAD_URL"
+  else
+    echo "Error: Could not download Maven Wrapper. Install curl or wget." >&2
+    exit 1
+  fi
+fi
+
+MAVEN_PROJECTBASEDIR=${MAVEN_BASEDIR:-"$(pwd)"}
+
+exec "$JAVACMD" \
+  -classpath "$MAVEN_WRAPPER_JAR" \
+  "-Dmaven.multiModuleProjectDirectory=$MAVEN_PROJECTBASEDIR" \
+  org.apache.maven.wrapper.MavenWrapperMain "$@"

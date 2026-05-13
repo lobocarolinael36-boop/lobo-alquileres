@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: lobo-alquileres-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/lobo_alquileres?stringtype=unspecified}
+    username: ${DB_USER:lobo_user}
+    password: ${DB_PASSWORD:lobo_password}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+  # ── Email ───────────────────────────────────────────────────────────────────
+  # Gmail: usá una "Contraseña de aplicación" (no la contraseña de tu cuenta).
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:lobokay5@gmail.com}
+    password: ${MAIL_PASSWORD:sdfq jixp rjwp chmj}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+
+jwt:
+  secret: ${JWT_SECRET:cambia-este-secreto-en-produccion-minimo-256-bits}
+  expiration-ms: ${JWT_EXPIRATION:86400000}
+
+logging:
+  level:
+    root: INFO
+    com.loboalquileres: DEBUG
+
+app:
+  email:
+    enabled: ${EMAIL_ENABLED:true}
+    from: ${EMAIL_FROM:lobokay5@gmail.com}
+
+# ── BCRA — Índice de Contratos de Locación (ICL) ─────────────────────────────
+# Para verificar el ID de variable correcto:
+#   GET https://api.bcra.gob.ar/estadisticas/v2.0/monetarias/
+# Buscá "Índice para Contratos de Locación".
+bcra:
+  api:
+    url: ${BCRA_API_URL:https://api.bcra.gob.ar/estadisticas/v2.0/monetarias}
+  icl:
+    variable-id: ${BCRA_ICL_VARIABLE_ID:41}
