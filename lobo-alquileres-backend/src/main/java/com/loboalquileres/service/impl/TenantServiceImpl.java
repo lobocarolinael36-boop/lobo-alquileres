@@ -199,12 +199,14 @@ public class TenantServiceImpl implements TenantService {
                 .schemas(schema)
                 .locations("classpath:db/migration")
                 .target("3")  // V1=schema base, V2=partida, V3=gastos. V4=datos ejemplo y V5=tenants se omiten.
+                // Incluir public en search_path para que uuid_generate_v4() sea accesible
+                .initSql("SET search_path TO " + schema + ", public")
                 .load();
             flyway.migrate();
             log.info("Migraciones V1-V3 aplicadas al schema {}", schema);
         } catch (Exception e) {
-            log.error("Error aplicando migraciones al schema {}: {}", schema, e.getMessage());
-            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Error al inicializar el schema del tenant.");
+            log.error("Error aplicando migraciones al schema {}: {}", schema, e.getMessage(), e);
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Error al inicializar el schema del tenant: " + e.getMessage());
         }
     }
 
