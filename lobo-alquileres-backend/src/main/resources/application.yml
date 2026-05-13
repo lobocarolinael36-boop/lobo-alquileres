@@ -38,6 +38,9 @@ spring:
           starttls:
             enable: true
 
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+
 server:
   port: ${PORT:8080}
   error:

@@ -6,16 +6,15 @@ import com.loboalquileres.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * Crea el usuario SUPERADMIN al iniciar en perfil "dev" si no existe.
- * En producción, el superadmin se crea con un script seguro.
+ * Crea el usuario SUPERADMIN al iniciar si no existe.
+ * Es idempotente: si ya existe no hace nada.
+ * Contraseña inicial: Caro1234 — cambiala después del primer login.
  */
 @Component
-@Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
 public class DataInitializer implements CommandLineRunner {
