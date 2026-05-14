@@ -1,5 +1,6 @@
 package com.loboalquileres.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 // @RestControllerAdvice intercepta excepciones de todos los controllers.
 // Usamos ProblemDetail (RFC 9457) — el estándar moderno para errores HTTP en APIs REST.
 // Spring Boot 3+ lo soporta nativamente sin dependencias extra.
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -94,6 +96,7 @@ public class GlobalExceptionHandler {
     // Captura genérica — nunca expone stacktrace al cliente
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGeneric(Exception ex) {
+        log.error("Error inesperado: {}", ex.getMessage(), ex);
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Ocurrió un error inesperado. Por favor, contactá al soporte."
