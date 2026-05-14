@@ -309,7 +309,7 @@ function BloqueRecibo({
   const filas: Fila[] = [
     {
       vence:       fmtFecha(cuota.fechaVencimiento),
-      descripcion: `ALQUILER ${periodo.toUpperCase()} — ${inmueble.direccionCompleta.toUpperCase()}`,
+      descripcion: `ALQUILER ${periodo.toUpperCase()} - ${inmueble.direccionCompleta.toUpperCase()}`,
       monto:       String(meses),
       punit:       fmtMonto(alquiler, moneda),
       total:       fmtMonto(alquiler, moneda),
@@ -487,7 +487,7 @@ export function ReciboPDF(props: ReciboProps) {
 
         {/* Divisor punteado */}
         <View style={s.divider} />
-        <Text style={s.dividerLabel}>✂  CORTAR AQUÍ  ✂</Text>
+        <Text style={s.dividerLabel}>- - - - CORTAR AQUI - - - -</Text>
 
         {/* COPIA (mitad inferior) */}
         <BloqueRecibo {...props} esCopia={true} />
