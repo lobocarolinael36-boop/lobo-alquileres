@@ -9,20 +9,27 @@ import { useAuthStore } from "@/store/authStore";
 // ── Items por rol ─────────────────────────────────────────────────────────────
 
 const NAV_TENANT = [
-  { to: "/",          icon: LayoutDashboard, label: "Dashboard",    end: true  },
-  { to: "/inmuebles", icon: Building2,        label: "Inmuebles",   end: false },
-  { to: "/personas",  icon: Users,            label: "Personas",    end: false },
-  { to: "/contratos", icon: FileText,         label: "Contratos",   end: false },
-  { to: "/cuotas",    icon: CreditCard,        label: "Cuotas y cobros", end: false },
+  { to: "/",          icon: LayoutDashboard, label: "Dashboard",       end: true  },
+  { to: "/inmuebles", icon: Building2,        label: "Inmuebles",      end: false },
+  { to: "/personas",  icon: Users,            label: "Personas",       end: false },
+  { to: "/contratos", icon: FileText,         label: "Contratos",      end: false },
+  { to: "/cuotas",    icon: CreditCard,       label: "Cuotas y cobros", end: false },
 ];
 
 const NAV_SUPERADMIN = [
   { to: "/admin", icon: ShieldCheck, label: "Inmobiliarias", end: true },
 ];
 
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+interface SidebarProps {
+  /** Callback para cerrar el sidebar en mobile al navegar */
+  onClose?: () => void;
+}
+
 // ── Componente ────────────────────────────────────────────────────────────────
 
-export function Sidebar() {
+export function Sidebar({ onClose }: SidebarProps) {
   const navigate = useNavigate();
   const { username, rol, logout } = useAuthStore();
 
@@ -62,6 +69,7 @@ export function Sidebar() {
             key={to}
             to={to}
             end={end}
+            onClick={onClose}
             className={({ isActive }) =>
               cn(
                 "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
