@@ -17,3 +17,6 @@ echo Presiona Ctrl+C para detener.
 echo.
 
 mvnw.cmd spring-boot:run
+echo.
+echo *** El backend se detuvo. Ver error arriba. ***
+pause
