@@ -76,10 +76,8 @@ public class TenantServiceImpl implements TenantService {
             .activo(true)
             .build());
 
-        // Crear el schema en PostgreSQL
-        crearSchema(schema);
-
         // Correr migraciones V1-V3 (estructurales) en el nuevo schema.
+        // Flyway crea el schema automáticamente con schemas(schema) — no hace falta llamada explícita.
         // V4 = datos de ejemplo → se omite en producción.
         // V5 = tenants + usuarios → solo para public.
         correrMigraciones(schema);
@@ -197,13 +195,13 @@ public class TenantServiceImpl implements TenantService {
             Flyway flyway = Flyway.configure()
                 .dataSource(dataSource)
                 .schemas(schema)
-                .locations("classpath:db/migration")
-                .target("3")  // V1=schema base, V2=partida, V3=gastos. V4=datos ejemplo y V5=tenants se omiten.
+                // Directorio exclusivo para tenant schemas: V1-V4 (sin datos de ejemplo ni tablas de public)
+                .locations("classpath:db/tenant-migration")
                 // Incluir public en search_path para que uuid_generate_v4() sea accesible
                 .initSql("SET search_path TO " + schema + ", public")
                 .load();
             flyway.migrate();
-            log.info("Migraciones V1-V3 aplicadas al schema {}", schema);
+            log.info("Migraciones tenant (V1-V4) aplicadas al schema {}", schema);
         } catch (Exception e) {
             log.error("Error aplicando migraciones al schema {}: {}", schema, e.getMessage(), e);
             throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Error al inicializar el schema del tenant: " + e.getMessage());
