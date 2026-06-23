@@ -40,6 +40,7 @@ public class PersonaServiceImpl implements PersonaService {
             .numeroDocumento(request.numeroDocumento())
             .nombre(request.nombre())
             .apellido(request.apellido())
+            .cuil(request.cuil())
             .email(request.email())
             .telefonoPrincipal(request.telefonoPrincipal())
             .telefonoAlternativo(request.telefonoAlternativo())
@@ -80,6 +81,7 @@ public class PersonaServiceImpl implements PersonaService {
         persona.setNumeroDocumento(request.numeroDocumento());
         persona.setNombre(request.nombre());
         persona.setApellido(request.apellido());
+        persona.setCuil(request.cuil());
         persona.setEmail(request.email());
         persona.setTelefonoPrincipal(request.telefonoPrincipal());
         persona.setTelefonoAlternativo(request.telefonoAlternativo());

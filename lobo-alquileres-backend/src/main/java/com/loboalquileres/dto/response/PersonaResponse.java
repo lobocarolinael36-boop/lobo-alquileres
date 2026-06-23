@@ -15,6 +15,7 @@ public record PersonaResponse(
     String nombre,
     String apellido,
     String nombreCompleto,       // apellido + ", " + nombre — listo para mostrar
+    String cuil,
     String email,
     String telefonoPrincipal,
     String telefonoAlternativo,

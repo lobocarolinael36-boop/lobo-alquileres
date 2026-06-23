@@ -121,6 +121,7 @@ export interface PersonaResponse {
   nombre: string;
   apellido: string;
   nombreCompleto: string;  // "apellido, nombre" — calculado por el backend
+  cuil: string | null;
   email: string | null;
   telefonoPrincipal: string | null;
   telefonoAlternativo: string | null;
@@ -145,6 +146,7 @@ export interface PersonaRequest {
   numeroDocumento: string;
   nombre: string;
   apellido: string;
+  cuil?: string;
   email?: string;
   telefonoPrincipal?: string;
   telefonoAlternativo?: string;

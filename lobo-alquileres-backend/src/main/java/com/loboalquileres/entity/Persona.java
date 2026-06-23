@@ -47,6 +47,9 @@ public class Persona {
     @Column(name = "apellido", length = 100, nullable = false)
     private String apellido;
 
+    @Column(name = "cuil", length = 20)
+    private String cuil;
+
     @Column(name = "email", length = 255)
     private String email;
 

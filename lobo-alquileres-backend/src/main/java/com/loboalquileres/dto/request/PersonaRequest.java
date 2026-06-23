@@ -27,6 +27,9 @@ public record PersonaRequest(
     @Size(max = 100)
     String apellido,
 
+    @Size(max = 20)
+    String cuil,
+
     @Size(max = 255)
     String email,
 

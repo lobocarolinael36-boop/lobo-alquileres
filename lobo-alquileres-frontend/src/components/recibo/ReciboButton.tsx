@@ -15,30 +15,38 @@ interface Props {
   cuota: CuotaResponse;
 }
 
-/**
- * Botón que genera y descarga el recibo PDF de una cuota pagada.
- * Solo debería renderizarse cuando cuota.estado === "PAGADA" | "PAGADA_PARCIAL".
- */
+async function fetchDolarBlue(): Promise<number | undefined> {
+  try {
+    const res = await fetch("https://dolarapi.com/v1/dolares/blue");
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    return data.venta as number;
+  } catch {
+    return undefined;
+  }
+}
+
 export function ReciboButton({ cuota }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleDownload() {
     setLoading(true);
     try {
-      // 1. Obtener el contrato para acceder a los IDs relacionados
       const contrato = await contratosApi.buscarPorId(cuota.contratoId);
 
-      // 2. Obtener inmueble, inquilino, tenant y (si tiene) garante en paralelo
       const [inmueble, inquilino, tenant] = await Promise.all([
         inmuebleApi.buscarPorId(contrato.inmuebleId),
         personasApi.buscarPorId(contrato.inquilinoId),
-        tenantsApi.getPerfil().catch(() => null),  // opcional: no bloquear si falla
+        tenantsApi.getPerfil().catch(() => null),
       ]);
 
-      // 3. Obtener el dueño desde el inmueble
       const dueno = await personasApi.buscarPorId(inmueble.duenoId);
 
-      // 4. Generar el blob
+      // Fetchear tipo de cambio blue solo si el contrato es en USD
+      const tipoCambioBlue = contrato.monedaContrato === "USD"
+        ? await fetchDolarBlue()
+        : undefined;
+
       const blob = await pdf(
         <ReciboPDF
           cuota={cuota}
@@ -47,10 +55,10 @@ export function ReciboButton({ cuota }: Props) {
           dueno={dueno}
           inmueble={inmueble}
           tenant={tenant}
+          tipoCambioBlue={tipoCambioBlue}
         />
       ).toBlob();
 
-      // 5. Disparar descarga
       const url = URL.createObjectURL(blob);
       const a   = document.createElement("a");
       a.href     = url;

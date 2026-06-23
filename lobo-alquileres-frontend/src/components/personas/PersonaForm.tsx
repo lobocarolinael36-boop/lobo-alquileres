@@ -31,6 +31,7 @@ const schema = z.object({
   numeroDocumento:   z.string().min(7, "Mínimo 7 caracteres").max(20),
   nombre:            z.string().min(1, "El nombre es obligatorio").max(100),
   apellido:          z.string().min(1, "El apellido es obligatorio").max(100),
+  cuil:              z.string().max(20).optional().or(z.literal("")),
   email:             z.string().email("Email inválido").optional().or(z.literal("")),
   telefonoPrincipal: z.string().max(30).optional().or(z.literal("")),
   telefonoAlternativo: z.string().max(30).optional().or(z.literal("")),
@@ -109,6 +110,7 @@ export function PersonaForm({ open, onOpenChange, persona }: PersonaFormProps) {
         numeroDocumento:    persona.numeroDocumento,
         nombre:             persona.nombre,
         apellido:           persona.apellido,
+        cuil:               persona.cuil ?? "",
         email:              persona.email ?? "",
         telefonoPrincipal:  persona.telefonoPrincipal ?? "",
         telefonoAlternativo: persona.telefonoAlternativo ?? "",
@@ -168,6 +170,7 @@ export function PersonaForm({ open, onOpenChange, persona }: PersonaFormProps) {
       numeroDocumento:  data.numeroDocumento,
       nombre:           data.nombre,
       apellido:         data.apellido,
+      cuil:             data.cuil || undefined,
       email:            data.email || undefined,
       telefonoPrincipal: data.telefonoPrincipal || undefined,
       telefonoAlternativo: data.telefonoAlternativo || undefined,
@@ -281,6 +284,13 @@ export function PersonaForm({ open, onOpenChange, persona }: PersonaFormProps) {
           <Section title="Contacto" />
 
           <div className="space-y-4">
+            <FormField label="CUIL" error={errors.cuil?.message}>
+              <Input
+                placeholder="20-12345678-9"
+                {...register("cuil")}
+                className={cn("font-mono", errors.cuil && "border-destructive")}
+              />
+            </FormField>
             <FormField label="Email" error={errors.email?.message}>
               <Input
                 type="email"

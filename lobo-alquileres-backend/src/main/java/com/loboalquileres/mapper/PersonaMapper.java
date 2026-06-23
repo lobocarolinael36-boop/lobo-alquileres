@@ -17,6 +17,7 @@ public final class PersonaMapper {
             p.getNombre(),
             p.getApellido(),
             p.getNombreCompleto(),
+            p.getCuil(),
             p.getEmail(),
             p.getTelefonoPrincipal(),
             p.getTelefonoAlternativo(),

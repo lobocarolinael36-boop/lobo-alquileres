@@ -28,6 +28,7 @@ import {
 
 import { cuotasApi } from "@/api/cuotas";
 import { ReciboButton } from "@/components/recibo/ReciboButton";
+import { LiquidacionButton } from "@/components/recibo/LiquidacionButton";
 import {
   type CuotaResponse,
   type EstadoCuota,
@@ -780,6 +781,7 @@ export default function CuotasPage() {
                               <>
                                 {/* Recibo PDF solo para cuotas pagadas */}
                                 <ReciboButton cuota={cuota} />
+                                <LiquidacionButton cuota={cuota} />
                               </>
                             )}
                           </div>
