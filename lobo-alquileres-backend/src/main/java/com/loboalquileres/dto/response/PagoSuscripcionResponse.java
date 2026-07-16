@@ -12,5 +12,7 @@ public record PagoSuscripcionResponse(
     String metodo,
     LocalDate fechaPago,
     String observaciones,
-    OffsetDateTime createdAt
+    OffsetDateTime createdAt,
+    String tipoPago,
+    UUID grupoId
 ) {}

@@ -35,10 +35,13 @@ export interface PagoSuscripcionResponse {
   fechaPago: string;
   observaciones: string | null;
   createdAt: string;
+  tipoPago: "MENSUAL" | "ANUAL";
+  grupoId: string | null;
 }
 
 export interface PagoSuscripcionRequest {
   mesPago?: string;
+  tipoPago?: "MENSUAL" | "ANUAL";
   monto: number;
   metodo?: string;
   fechaPago?: string;

@@ -24,8 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -205,26 +208,75 @@ public class TenantServiceImpl implements TenantService {
     public PagoSuscripcionResponse registrarPago(UUID tenantId, PagoSuscripcionRequest req) {
         Tenant tenant = findOrThrow(tenantId);
 
-        String mes = (req.mesPago() != null && !req.mesPago().isBlank())
+        String mesInicio = (req.mesPago() != null && !req.mesPago().isBlank())
             ? req.mesPago()
             : YearMonth.now().toString();
 
-        if (pagoRepository.existsByTenantIdAndMesPago(tenantId, mes)) {
+        boolean esAnual = "ANUAL".equalsIgnoreCase(req.tipoPago());
+
+        if (esAnual) {
+            return registrarPagoAnual(tenant, mesInicio, req);
+        }
+
+        // ── Pago mensual ─────────────────────────────────────────────────────
+        if (pagoRepository.existsByTenantIdAndMesPago(tenantId, mesInicio)) {
             throw new ResponseStatusException(CONFLICT,
-                "Ya existe un pago registrado para " + tenant.getNombre() + " en " + mes + ".");
+                "Ya existe un pago registrado para " + tenant.getNombre() + " en " + mesInicio + ".");
         }
 
         PagoSuscripcion pago = pagoRepository.save(PagoSuscripcion.builder()
             .tenant(tenant)
-            .mesPago(mes)
-            .monto(req.monto() != null ? req.monto() : java.math.BigDecimal.ZERO)
+            .mesPago(mesInicio)
+            .monto(req.monto() != null ? req.monto() : BigDecimal.ZERO)
             .metodo(req.metodo())
             .fechaPago(req.fechaPago() != null ? req.fechaPago() : LocalDate.now())
             .observaciones(req.observaciones())
+            .tipoPago("MENSUAL")
             .build());
 
-        log.info("Pago de suscripción registrado: {} — {}", tenant.getNombre(), mes);
+        log.info("Pago mensual registrado: {} — {}", tenant.getNombre(), mesInicio);
         return toPagoResponse(pago);
+    }
+
+    private PagoSuscripcionResponse registrarPagoAnual(Tenant tenant, String mesInicio, PagoSuscripcionRequest req) {
+        YearMonth inicio = YearMonth.parse(mesInicio);
+
+        // Verificar que ninguno de los 12 meses tenga pago existente
+        List<String> conflictos = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            String mes = inicio.plusMonths(i).toString();
+            if (pagoRepository.existsByTenantIdAndMesPago(tenant.getId(), mes)) {
+                conflictos.add(mes);
+            }
+        }
+        if (!conflictos.isEmpty()) {
+            throw new ResponseStatusException(CONFLICT,
+                "Ya existen pagos registrados para los meses: " + String.join(", ", conflictos));
+        }
+
+        BigDecimal total = req.monto() != null ? req.monto() : BigDecimal.ZERO;
+        BigDecimal montoPorMes = total.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
+        LocalDate fechaPago = req.fechaPago() != null ? req.fechaPago() : LocalDate.now();
+        UUID grupoId = UUID.randomUUID();
+
+        List<PagoSuscripcion> pagos = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            pagos.add(PagoSuscripcion.builder()
+                .tenant(tenant)
+                .mesPago(inicio.plusMonths(i).toString())
+                .monto(montoPorMes)
+                .metodo(req.metodo())
+                .fechaPago(fechaPago)
+                .observaciones(req.observaciones())
+                .tipoPago("ANUAL")
+                .grupoId(grupoId)
+                .build());
+        }
+        pagoRepository.saveAll(pagos);
+
+        log.info("Pago anual registrado: {} — {} a {} (grupo {})",
+            tenant.getNombre(), mesInicio, inicio.plusMonths(11), grupoId);
+        return toPagoResponse(pagos.get(0));
     }
 
     @Override
@@ -234,7 +286,14 @@ public class TenantServiceImpl implements TenantService {
         PagoSuscripcion pago = pagoRepository.findById(pagoId)
             .filter(p -> p.getTenant().getId().equals(tenantId))
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Pago no encontrado."));
-        pagoRepository.delete(pago);
+
+        if (pago.getGrupoId() != null) {
+            // Pago anual: eliminar los 12 registros del grupo
+            pagoRepository.deleteByGrupoId(pago.getGrupoId());
+            log.info("Pago anual eliminado (grupo {})", pago.getGrupoId());
+        } else {
+            pagoRepository.delete(pago);
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -316,7 +375,9 @@ public class TenantServiceImpl implements TenantService {
             p.getMetodo(),
             p.getFechaPago(),
             p.getObservaciones(),
-            p.getCreatedAt()
+            p.getCreatedAt(),
+            p.getTipoPago(),
+            p.getGrupoId()
         );
     }
 }

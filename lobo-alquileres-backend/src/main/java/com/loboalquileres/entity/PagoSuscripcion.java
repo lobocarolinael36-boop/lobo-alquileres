@@ -41,6 +41,15 @@ public class PagoSuscripcion {
     @Column(name = "observaciones", columnDefinition = "TEXT")
     private String observaciones;
 
+    /** "MENSUAL" o "ANUAL". Los pagos anuales generan 12 registros con el mismo grupoId. */
+    @Column(name = "tipo_pago", nullable = false, length = 10)
+    @Builder.Default
+    private String tipoPago = "MENSUAL";
+
+    /** UUID compartido por los 12 registros de un pago anual. Null para pagos mensuales. */
+    @Column(name = "grupo_id")
+    private UUID grupoId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

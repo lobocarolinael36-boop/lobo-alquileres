@@ -16,4 +16,8 @@ public interface PagoSuscripcionRepository extends JpaRepository<PagoSuscripcion
     boolean existsByTenantIdAndMesPago(UUID tenantId, String mesPago);
 
     Optional<PagoSuscripcion> findByTenantIdAndMesPago(UUID tenantId, String mesPago);
+
+    List<PagoSuscripcion> findByGrupoIdOrderByMesPagoAsc(UUID grupoId);
+
+    void deleteByGrupoId(UUID grupoId);
 }
