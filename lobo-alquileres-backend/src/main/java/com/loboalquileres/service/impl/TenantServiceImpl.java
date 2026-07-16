@@ -1,12 +1,16 @@
 package com.loboalquileres.service.impl;
 
 import com.loboalquileres.dto.request.CambiarPasswordRequest;
+import com.loboalquileres.dto.request.PagoSuscripcionRequest;
 import com.loboalquileres.dto.request.PerfilUpdateRequest;
 import com.loboalquileres.dto.request.TenantRequest;
+import com.loboalquileres.dto.response.PagoSuscripcionResponse;
 import com.loboalquileres.dto.response.TenantResponse;
+import com.loboalquileres.entity.PagoSuscripcion;
 import com.loboalquileres.entity.Tenant;
 import com.loboalquileres.entity.Usuario;
 import com.loboalquileres.enums.RolUsuario;
+import com.loboalquileres.repository.PagoSuscripcionRepository;
 import com.loboalquileres.repository.TenantRepository;
 import com.loboalquileres.repository.UsuarioRepository;
 import com.loboalquileres.service.TenantService;
@@ -20,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.sql.DataSource;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,11 +36,12 @@ import static org.springframework.http.HttpStatus.*;
 @RequiredArgsConstructor
 public class TenantServiceImpl implements TenantService {
 
-    private final TenantRepository  tenantRepository;
-    private final UsuarioRepository usuarioRepository;
-    private final PasswordEncoder   passwordEncoder;
-    private final DataSource        dataSource;
-    private final JdbcTemplate      jdbcTemplate;
+    private final TenantRepository          tenantRepository;
+    private final UsuarioRepository         usuarioRepository;
+    private final PagoSuscripcionRepository pagoRepository;
+    private final PasswordEncoder           passwordEncoder;
+    private final DataSource                dataSource;
+    private final JdbcTemplate              jdbcTemplate;
 
     // ── Listar ────────────────────────────────────────────────────────────────
 
@@ -182,6 +189,54 @@ public class TenantServiceImpl implements TenantService {
         return toResponse(tenantRepository.save(tenant));
     }
 
+    // ── Pagos de suscripción ─────────────────────────────────────────────────
+
+    @Override
+    public List<PagoSuscripcionResponse> listarPagos(UUID tenantId) {
+        findOrThrow(tenantId);
+        return pagoRepository.findByTenantIdOrderByMesPagoDesc(tenantId)
+            .stream()
+            .map(this::toPagoResponse)
+            .toList();
+    }
+
+    @Override
+    @Transactional
+    public PagoSuscripcionResponse registrarPago(UUID tenantId, PagoSuscripcionRequest req) {
+        Tenant tenant = findOrThrow(tenantId);
+
+        String mes = (req.mesPago() != null && !req.mesPago().isBlank())
+            ? req.mesPago()
+            : YearMonth.now().toString();
+
+        if (pagoRepository.existsByTenantIdAndMesPago(tenantId, mes)) {
+            throw new ResponseStatusException(CONFLICT,
+                "Ya existe un pago registrado para " + tenant.getNombre() + " en " + mes + ".");
+        }
+
+        PagoSuscripcion pago = pagoRepository.save(PagoSuscripcion.builder()
+            .tenant(tenant)
+            .mesPago(mes)
+            .monto(req.monto() != null ? req.monto() : java.math.BigDecimal.ZERO)
+            .metodo(req.metodo())
+            .fechaPago(req.fechaPago() != null ? req.fechaPago() : LocalDate.now())
+            .observaciones(req.observaciones())
+            .build());
+
+        log.info("Pago de suscripción registrado: {} — {}", tenant.getNombre(), mes);
+        return toPagoResponse(pago);
+    }
+
+    @Override
+    @Transactional
+    public void eliminarPago(UUID tenantId, UUID pagoId) {
+        findOrThrow(tenantId);
+        PagoSuscripcion pago = pagoRepository.findById(pagoId)
+            .filter(p -> p.getTenant().getId().equals(tenantId))
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Pago no encontrado."));
+        pagoRepository.delete(pago);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void crearSchema(String schema) {
@@ -214,7 +269,6 @@ public class TenantServiceImpl implements TenantService {
     }
 
     private TenantResponse toResponse(Tenant t) {
-        // Buscar el username del admin del tenant
         String adminUsername = usuarioRepository
             .findAllByTenantSchemaOrderByCreatedAtDesc(t.getSchemaName())
             .stream()
@@ -222,6 +276,16 @@ public class TenantServiceImpl implements TenantService {
             .findFirst()
             .map(Usuario::getUsername)
             .orElse("—");
+
+        String mesActual = YearMonth.now().toString();
+        boolean pagaMesActual = pagoRepository.existsByTenantIdAndMesPago(t.getId(), mesActual);
+
+        LocalDate fechaUltimoPago = pagoRepository
+            .findByTenantIdOrderByMesPagoDesc(t.getId())
+            .stream()
+            .findFirst()
+            .map(PagoSuscripcion::getFechaPago)
+            .orElse(null);
 
         return new TenantResponse(
             t.getId(),
@@ -238,7 +302,21 @@ public class TenantServiceImpl implements TenantService {
             t.getDomicilio(),
             t.getCuit(),
             t.getWebsite(),
-            t.getCreatedAt()
+            t.getCreatedAt(),
+            pagaMesActual,
+            fechaUltimoPago
+        );
+    }
+
+    private PagoSuscripcionResponse toPagoResponse(PagoSuscripcion p) {
+        return new PagoSuscripcionResponse(
+            p.getId(),
+            p.getMesPago(),
+            p.getMonto(),
+            p.getMetodo(),
+            p.getFechaPago(),
+            p.getObservaciones(),
+            p.getCreatedAt()
         );
     }
 }

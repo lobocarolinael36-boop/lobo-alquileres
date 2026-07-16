@@ -22,6 +22,27 @@ export interface TenantResponse {
   cuit: string | null;
   website: string | null;
   createdAt: string;
+  // Pagos de suscripción
+  pagaMesActual: boolean;
+  fechaUltimoPago: string | null;
+}
+
+export interface PagoSuscripcionResponse {
+  id: string;
+  mesPago: string;
+  monto: number;
+  metodo: string | null;
+  fechaPago: string;
+  observaciones: string | null;
+  createdAt: string;
+}
+
+export interface PagoSuscripcionRequest {
+  mesPago?: string;
+  monto: number;
+  metodo?: string;
+  fechaPago?: string;
+  observaciones?: string;
 }
 
 export interface TenantRequest {
@@ -57,6 +78,15 @@ export const tenantsApi = {
 
   eliminar: (id: string): Promise<void> =>
     apiClient.delete(`${BASE}/${id}`).then(() => {}),
+
+  listarPagos: (id: string): Promise<PagoSuscripcionResponse[]> =>
+    apiClient.get<PagoSuscripcionResponse[]>(`${BASE}/${id}/pagos`).then((r) => r.data),
+
+  registrarPago: (id: string, req: PagoSuscripcionRequest): Promise<PagoSuscripcionResponse> =>
+    apiClient.post<PagoSuscripcionResponse>(`${BASE}/${id}/pagos`, req).then((r) => r.data),
+
+  eliminarPago: (id: string, pagoId: string): Promise<void> =>
+    apiClient.delete(`${BASE}/${id}/pagos/${pagoId}`).then(() => {}),
 
   /** GET /api/v1/perfil — datos de la inmobiliaria activa (para encabezado de recibos) */
   getPerfil: (): Promise<TenantResponse> =>

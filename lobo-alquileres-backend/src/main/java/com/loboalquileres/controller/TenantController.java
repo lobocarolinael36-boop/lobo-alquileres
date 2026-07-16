@@ -1,7 +1,9 @@
 package com.loboalquileres.controller;
 
 import com.loboalquileres.dto.request.CambiarPasswordRequest;
+import com.loboalquileres.dto.request.PagoSuscripcionRequest;
 import com.loboalquileres.dto.request.TenantRequest;
+import com.loboalquileres.dto.response.PagoSuscripcionResponse;
 import com.loboalquileres.dto.response.TenantResponse;
 import com.loboalquileres.service.TenantService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,6 +62,32 @@ public class TenantController {
     @Operation(summary = "Eliminar una inmobiliaria (los datos del schema se mantienen para recovery)")
     public ResponseEntity<Void> eliminar(@PathVariable UUID id) {
         tenantService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Pagos de suscripción ─────────────────────────────────────────────────
+
+    @GetMapping("/{id}/pagos")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    @Operation(summary = "Listar historial de pagos de suscripción de una inmobiliaria")
+    public ResponseEntity<List<PagoSuscripcionResponse>> listarPagos(@PathVariable UUID id) {
+        return ResponseEntity.ok(tenantService.listarPagos(id));
+    }
+
+    @PostMapping("/{id}/pagos")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    @Operation(summary = "Registrar un pago de suscripción mensual")
+    public ResponseEntity<PagoSuscripcionResponse> registrarPago(
+            @PathVariable UUID id,
+            @RequestBody @Valid PagoSuscripcionRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(tenantService.registrarPago(id, request));
+    }
+
+    @DeleteMapping("/{id}/pagos/{pagoId}")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    @Operation(summary = "Eliminar un pago de suscripción registrado por error")
+    public ResponseEntity<Void> eliminarPago(@PathVariable UUID id, @PathVariable UUID pagoId) {
+        tenantService.eliminarPago(id, pagoId);
         return ResponseEntity.noContent().build();
     }
 

@@ -1,8 +1,10 @@
 package com.loboalquileres.service;
 
 import com.loboalquileres.dto.request.CambiarPasswordRequest;
+import com.loboalquileres.dto.request.PagoSuscripcionRequest;
 import com.loboalquileres.dto.request.PerfilUpdateRequest;
 import com.loboalquileres.dto.request.TenantRequest;
+import com.loboalquileres.dto.response.PagoSuscripcionResponse;
 import com.loboalquileres.dto.response.TenantResponse;
 
 import java.util.List;
@@ -25,4 +27,12 @@ public interface TenantService {
 
     /** Actualiza los datos de contacto del tenant activo */
     TenantResponse actualizarPerfil(String schemaName, PerfilUpdateRequest request);
+
+    // ── Pagos de suscripción ─────────────────────────────────────────────────
+
+    List<PagoSuscripcionResponse> listarPagos(UUID tenantId);
+
+    PagoSuscripcionResponse registrarPago(UUID tenantId, PagoSuscripcionRequest request);
+
+    void eliminarPago(UUID tenantId, UUID pagoId);
 }

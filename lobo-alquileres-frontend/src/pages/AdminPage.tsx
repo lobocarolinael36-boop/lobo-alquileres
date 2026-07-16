@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   Building2, Plus, PowerOff, Power, Trash2, KeyRound,
   Eye, EyeOff, Loader2, ShieldCheck, CalendarDays,
+  CheckCircle2, Clock, DollarSign, History, X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,18 +25,23 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { tenantsApi, type TenantRequest, type TenantResponse } from "@/api/tenants";
+import {
+  tenantsApi,
+  type TenantRequest,
+  type TenantResponse,
+  type PagoSuscripcionRequest,
+  type PagoSuscripcionResponse,
+} from "@/api/tenants";
 
-// ── Esquemas de validación ────────────────────────────────────────────────────
+// ── Schemas ───────────────────────────────────────────────────────────────────
 
 const nuevoTenantSchema = z.object({
   nombre:        z.string().min(2, "Mínimo 2 caracteres").max(200),
   slug:          z.string()
-                   .min(3, "Mínimo 3 caracteres")
-                   .max(50, "Máximo 50 caracteres")
+                   .min(3).max(50)
                    .regex(/^[a-z0-9][a-z0-9\-]{1,48}[a-z0-9]$/, "Solo minúsculas, números y guiones"),
   email:         z.string().email("Email inválido").optional().or(z.literal("")),
-  adminUsername: z.string().min(3, "Mínimo 3 caracteres").max(50),
+  adminUsername: z.string().min(3).max(50),
   adminPassword: z.string().min(8, "Mínimo 8 caracteres"),
   plan:          z.enum(["BASICO", "PROFESIONAL", "ENTERPRISE"]),
   fechaVencimiento: z.string().optional(),
@@ -46,10 +52,30 @@ const cambiarPasswordSchema = z.object({
   nuevaPassword: z.string().min(8, "Mínimo 8 caracteres"),
 });
 
+const pagoSchema = z.object({
+  mesPago:      z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Formato inválido"),
+  monto:        z.coerce.number().min(0, "El monto no puede ser negativo"),
+  metodo:       z.string().min(1, "Seleccioná un método"),
+  fechaPago:    z.string().optional(),
+  observaciones: z.string().optional(),
+});
+
 type NuevoTenantForm     = z.infer<typeof nuevoTenantSchema>;
 type CambiarPasswordForm = z.infer<typeof cambiarPasswordSchema>;
+type PagoForm            = z.infer<typeof pagoSchema>;
 
-// ── Helper: badge de estado ───────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function mesActual() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMes(mes: string) {
+  const [anio, m] = mes.split("-");
+  const nombres = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  return `${nombres[parseInt(m) - 1]} ${anio}`;
+}
 
 function EstadoBadge({ activo }: { activo: boolean }) {
   return activo
@@ -57,22 +83,54 @@ function EstadoBadge({ activo }: { activo: boolean }) {
     : <Badge className="bg-red-100 text-red-700 border border-red-200 hover:bg-red-100">Inactivo</Badge>;
 }
 
+function PagoBadge({ pagaMesActual, fechaUltimoPago }: { pagaMesActual: boolean; fechaUltimoPago: string | null }) {
+  if (pagaMesActual) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+        <span className="text-sm font-medium text-emerald-700">Al día</span>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="flex items-center gap-1.5">
+        <Clock className="h-4 w-4 text-amber-500" />
+        <span className="text-sm font-medium text-amber-600">Pendiente</span>
+      </div>
+      {fechaUltimoPago && (
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Último: {new Date(fechaUltimoPago).toLocaleDateString("es-AR")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Página ────────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
   const qc = useQueryClient();
 
-  const [dialogNuevo,      setDialogNuevo]      = useState(false);
-  const [dialogPassword,   setDialogPassword]   = useState<TenantResponse | null>(null);
-  const [dialogEliminar,   setDialogEliminar]   = useState<TenantResponse | null>(null);
-  const [showPassword,     setShowPassword]     = useState(false);
-  const [showNewPassword,  setShowNewPassword]  = useState(false);
+  const [dialogNuevo,    setDialogNuevo]    = useState(false);
+  const [dialogPassword, setDialogPassword] = useState<TenantResponse | null>(null);
+  const [dialogEliminar, setDialogEliminar] = useState<TenantResponse | null>(null);
+  const [dialogPago,     setDialogPago]     = useState<TenantResponse | null>(null);
+  const [dialogHistorial,setDialogHistorial]= useState<TenantResponse | null>(null);
+  const [showPassword,    setShowPassword]    = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
   const { data: tenants = [], isLoading } = useQuery({
     queryKey: ["admin", "tenants"],
     queryFn: tenantsApi.listar,
+  });
+
+  const { data: historialPagos = [], isFetching: cargandoHistorial } = useQuery({
+    queryKey: ["admin", "pagos", dialogHistorial?.id],
+    queryFn: () => tenantsApi.listarPagos(dialogHistorial!.id),
+    enabled: !!dialogHistorial,
   });
 
   // ── Mutations ─────────────────────────────────────────────────────────────
@@ -116,6 +174,30 @@ export default function AdminPage() {
     onError: () => toast.error("Error al eliminar la inmobiliaria."),
   });
 
+  const pagarMut = useMutation({
+    mutationFn: ({ id, req }: { id: string; req: PagoSuscripcionRequest }) =>
+      tenantsApi.registrarPago(id, req),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "tenants"] });
+      qc.invalidateQueries({ queryKey: ["admin", "pagos"] });
+      setDialogPago(null);
+      toast.success("Pago registrado correctamente.");
+    },
+    onError: (e: any) =>
+      toast.error(e.response?.data?.error ?? "Error al registrar el pago."),
+  });
+
+  const eliminarPagoMut = useMutation({
+    mutationFn: ({ tenantId, pagoId }: { tenantId: string; pagoId: string }) =>
+      tenantsApi.eliminarPago(tenantId, pagoId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "tenants"] });
+      qc.invalidateQueries({ queryKey: ["admin", "pagos", dialogHistorial?.id] });
+      toast.success("Pago eliminado.");
+    },
+    onError: () => toast.error("Error al eliminar el pago."),
+  });
+
   // ── Forms ─────────────────────────────────────────────────────────────────
 
   const nuevoForm = useForm<NuevoTenantForm>({
@@ -125,6 +207,11 @@ export default function AdminPage() {
 
   const passForm = useForm<CambiarPasswordForm>({
     resolver: zodResolver(cambiarPasswordSchema),
+  });
+
+  const pagoForm = useForm<PagoForm>({
+    resolver: zodResolver(pagoSchema),
+    defaultValues: { mesPago: mesActual(), monto: 0, metodo: "" },
   });
 
   const onCrear = (data: NuevoTenantForm) => {
@@ -140,6 +227,24 @@ export default function AdminPage() {
     if (!dialogPassword) return;
     passwordMut.mutate({ id: dialogPassword.id, pass: data.nuevaPassword });
   };
+
+  const onRegistrarPago = (data: PagoForm) => {
+    if (!dialogPago) return;
+    pagarMut.mutate({
+      id: dialogPago.id,
+      req: {
+        mesPago: data.mesPago,
+        monto: data.monto,
+        metodo: data.metodo || undefined,
+        fechaPago: data.fechaPago || undefined,
+        observaciones: data.observaciones || undefined,
+      },
+    });
+  };
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+
+  const pagaronEsteMes = tenants.filter(t => t.pagaMesActual).length;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -166,11 +271,12 @@ export default function AdminPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total clientes",  value: tenants.length,                         color: "text-carbon" },
-          { label: "Activos",         value: tenants.filter(t => t.activo).length,    color: "text-emerald-600" },
-          { label: "Inactivos",       value: tenants.filter(t => !t.activo).length,   color: "text-red-600" },
+          { label: "Total clientes",      value: tenants.length,                        color: "text-carbon" },
+          { label: "Activos",             value: tenants.filter(t => t.activo).length,   color: "text-emerald-600" },
+          { label: "Inactivos",           value: tenants.filter(t => !t.activo).length,  color: "text-red-600" },
+          { label: "Pagaron este mes",    value: pagaronEsteMes,                         color: pagaronEsteMes === tenants.length && tenants.length > 0 ? "text-emerald-600" : "text-amber-600" },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-xl border bg-card p-4">
             <p className="text-sm text-muted-foreground">{label}</p>
@@ -188,6 +294,7 @@ export default function AdminPage() {
               <TableHead>Admin</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Vencimiento</TableHead>
+              <TableHead>Pago {formatMes(mesActual())}</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -195,13 +302,13 @@ export default function AdminPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : tenants.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                   No hay inmobiliarias registradas todavía.
                 </TableCell>
               </TableRow>
@@ -234,10 +341,40 @@ export default function AdminPage() {
                     )}
                   </TableCell>
                   <TableCell>
+                    <PagoBadge
+                      pagaMesActual={t.pagaMesActual}
+                      fechaUltimoPago={t.fechaUltimoPago}
+                    />
+                  </TableCell>
+                  <TableCell>
                     <EstadoBadge activo={t.activo} />
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-end gap-1.5">
+                    <div className="flex items-center justify-end gap-1">
+
+                      {/* Registrar pago */}
+                      <Button
+                        size="icon" variant="ghost"
+                        title="Registrar pago mensual"
+                        onClick={() => {
+                          pagoForm.reset({ mesPago: mesActual(), monto: 0, metodo: "" });
+                          setDialogPago(t);
+                        }}
+                        disabled={t.pagaMesActual}
+                        className={t.pagaMesActual ? "opacity-40" : ""}
+                      >
+                        <DollarSign className="h-4 w-4 text-emerald-600" />
+                      </Button>
+
+                      {/* Historial de pagos */}
+                      <Button
+                        size="icon" variant="ghost"
+                        title="Ver historial de pagos"
+                        onClick={() => setDialogHistorial(t)}
+                      >
+                        <History className="h-4 w-4 text-blue-500" />
+                      </Button>
+
                       {/* Cambiar contraseña */}
                       <Button
                         size="icon" variant="ghost"
@@ -289,42 +426,34 @@ export default function AdminPage() {
           </DialogHeader>
 
           <form onSubmit={nuevoForm.handleSubmit(onCrear)} className="space-y-4 pt-2">
-            {/* Nombre */}
             <div className="space-y-1.5">
-              <Label>Nombre de la inmobiliaria <span className="text-destructive">*</span></Label>
+              <Label>Nombre <span className="text-destructive">*</span></Label>
               <Input placeholder="Ej: Remax Centro" {...nuevoForm.register("nombre")} />
               {nuevoForm.formState.errors.nombre && (
                 <p className="text-xs text-destructive">{nuevoForm.formState.errors.nombre.message}</p>
               )}
             </div>
 
-            {/* Slug */}
             <div className="space-y-1.5">
-              <Label>
-                Slug (identificador único) <span className="text-destructive">*</span>
-              </Label>
+              <Label>Slug (identificador único) <span className="text-destructive">*</span></Label>
               <Input
                 placeholder="ej: remax-centro"
                 {...nuevoForm.register("slug")}
-                onChange={(e) => {
-                  nuevoForm.setValue("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
-                }}
+                onChange={(e) => nuevoForm.setValue("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
               />
               <p className="text-xs text-muted-foreground">
-                Se usará como nombre del schema: <code className="bg-muted px-1 rounded">tenant_{nuevoForm.watch("slug") || "slug"}</code>
+                Schema: <code className="bg-muted px-1 rounded">tenant_{nuevoForm.watch("slug") || "slug"}</code>
               </p>
               {nuevoForm.formState.errors.slug && (
                 <p className="text-xs text-destructive">{nuevoForm.formState.errors.slug.message}</p>
               )}
             </div>
 
-            {/* Email */}
             <div className="space-y-1.5">
               <Label>Email de contacto</Label>
               <Input type="email" placeholder="info@inmobiliaria.com" {...nuevoForm.register("email")} />
             </div>
 
-            {/* Admin username + password */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Usuario admin <span className="text-destructive">*</span></Label>
@@ -341,11 +470,8 @@ export default function AdminPage() {
                     placeholder="Mínimo 8 caracteres"
                     {...nuevoForm.register("adminPassword")}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  >
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
@@ -355,14 +481,11 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Plan + Vencimiento */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Plan</Label>
-                <select
-                  {...nuevoForm.register("plan")}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                >
+                <select {...nuevoForm.register("plan")}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="BASICO">Básico</option>
                   <option value="PROFESIONAL">Profesional</option>
                   <option value="ENTERPRISE">Enterprise</option>
@@ -374,22 +497,145 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Observaciones */}
             <div className="space-y-1.5">
               <Label>Observaciones</Label>
               <Input placeholder="Notas internas..." {...nuevoForm.register("observaciones")} />
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogNuevo(false)}>
-                Cancelar
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setDialogNuevo(false)}>Cancelar</Button>
               <Button type="submit" disabled={crearMut.isPending}>
                 {crearMut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Crear inmobiliaria
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog: Registrar pago ────────────────────────────────────────── */}
+      <Dialog open={!!dialogPago} onOpenChange={(o) => !o && setDialogPago(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Registrar pago</DialogTitle>
+            <DialogDescription>
+              Pago mensual de <strong>{dialogPago?.nombre}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={pagoForm.handleSubmit(onRegistrarPago)} className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Mes <span className="text-destructive">*</span></Label>
+                <Input type="month" {...pagoForm.register("mesPago")} />
+                {pagoForm.formState.errors.mesPago && (
+                  <p className="text-xs text-destructive">{pagoForm.formState.errors.mesPago.message}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Monto ($) <span className="text-destructive">*</span></Label>
+                <Input type="number" step="0.01" min="0" placeholder="0.00" {...pagoForm.register("monto")} />
+                {pagoForm.formState.errors.monto && (
+                  <p className="text-xs text-destructive">{pagoForm.formState.errors.monto.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Método de pago <span className="text-destructive">*</span></Label>
+              <select {...pagoForm.register("metodo")}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm">
+                <option value="">Seleccioná...</option>
+                <option value="Transferencia bancaria">Transferencia bancaria</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="MercadoPago">MercadoPago</option>
+                <option value="Débito automático">Débito automático</option>
+                <option value="Otro">Otro</option>
+              </select>
+              {pagoForm.formState.errors.metodo && (
+                <p className="text-xs text-destructive">{pagoForm.formState.errors.metodo.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Fecha de pago</Label>
+              <Input type="date" {...pagoForm.register("fechaPago")} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Observaciones</Label>
+              <Input placeholder="Ej: transferencia nro 123456..." {...pagoForm.register("observaciones")} />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogPago(null)}>Cancelar</Button>
+              <Button type="submit" disabled={pagarMut.isPending}>
+                {pagarMut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Registrar pago
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog: Historial de pagos ────────────────────────────────────── */}
+      <Dialog open={!!dialogHistorial} onOpenChange={(o) => !o && setDialogHistorial(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Historial de pagos — {dialogHistorial?.nombre}
+            </DialogTitle>
+          </DialogHeader>
+
+          {cargandoHistorial ? (
+            <div className="py-8 flex justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : historialPagos.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Sin pagos registrados todavía.
+            </p>
+          ) : (
+            <div className="rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mes</TableHead>
+                    <TableHead>Monto</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Fecha pago</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {historialPagos.map((p: PagoSuscripcionResponse) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{formatMes(p.mesPago)}</TableCell>
+                      <TableCell>${p.monto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{p.metodo ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(p.fechaPago).toLocaleDateString("es-AR")}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="icon" variant="ghost"
+                          title="Eliminar pago"
+                          onClick={() => eliminarPagoMut.mutate({
+                            tenantId: dialogHistorial!.id,
+                            pagoId: p.id,
+                          })}
+                          disabled={eliminarPagoMut.isPending}
+                        >
+                          <X className="h-3.5 w-3.5 text-red-400" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -412,11 +658,8 @@ export default function AdminPage() {
                   placeholder="Mínimo 8 caracteres"
                   {...passForm.register("nuevaPassword")}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                >
+                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                   {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
@@ -426,9 +669,7 @@ export default function AdminPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogPassword(null)}>
-                Cancelar
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setDialogPassword(null)}>Cancelar</Button>
               <Button type="submit" disabled={passwordMut.isPending}>
                 {passwordMut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Guardar

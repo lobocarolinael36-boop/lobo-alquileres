@@ -20,5 +20,8 @@ public record TenantResponse(
     String domicilio,
     String cuit,
     String website,
-    OffsetDateTime createdAt
+    OffsetDateTime createdAt,
+    // Estado de pago de suscripción
+    boolean pagaMesActual,
+    LocalDate fechaUltimoPago
 ) {}
